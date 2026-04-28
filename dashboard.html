@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的浏览器 — 窗口概览</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="page">
+    <!-- 顶部导航 -->
+    <nav class="top-bar">
+      <div class="brand">
+        <span class="brand-mark">◉</span>
+        <span class="brand-name">浏览器窗口概览</span>
+      </div>
+      <div class="top-actions">
+        <button class="action-link" id="refreshBtn">刷新</button>
+        <button class="action-link" id="closeDuplicatesBtn">清理重复</button>
+        <button class="action-link" id="settingsBtn">设置</button>
+      </div>
+    </nav>
+
+    <!-- 控制栏：搜索 + 布局切换 -->
+    <div class="control-bar">
+      <div class="search-box">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 11L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="搜索标签页标题、网址..." autocomplete="off">
+        <span class="search-shortcut">⌘K</span>
+      </div>
+      <div class="layout-switcher">
+        <button class="layout-btn active" data-layout="grid" title="卡片网格">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="1" y="1" width="6" height="6" rx="1"/>
+            <rect x="9" y="1" width="6" height="6" rx="1"/>
+            <rect x="1" y="9" width="6" height="6" rx="1"/>
+            <rect x="9" y="9" width="6" height="6" rx="1"/>
+          </svg>
+        </button>
+        <button class="layout-btn" data-layout="list" title="紧凑列表">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="1" y="2" width="14" height="2" rx="1"/>
+            <rect x="1" y="7" width="14" height="2" rx="1"/>
+            <rect x="1" y="12" width="14" height="2" rx="1"/>
+          </svg>
+        </button>
+        <button class="layout-btn" data-layout="magazine" title="杂志翻页">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="2" y="1" width="5" height="14" rx="1"/>
+            <rect x="9" y="1" width="5" height="14" rx="1" opacity="0.5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 杂志模式导航 -->
+    <div class="magazine-nav" id="magazineNav" style="display:none;">
+      <button class="magazine-prev" id="magazinePrev">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M13 4L7 10L13 16"/>
+        </svg>
+      </button>
+      <div class="magazine-indicator">
+        <span id="magazineCurrent">1</span>
+        <span class="magazine-sep">/</span>
+        <span id="magazineTotal">1</span>
+      </div>
+      <button class="magazine-next" id="magazineNext">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M7 4L13 10L7 16"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 统计栏 -->
+    <div class="stats-bar">
+      <span class="stat" id="windowCount">0 个窗口</span>
+      <span class="divider">·</span>
+      <span class="stat" id="tabCount">0 个标签页</span>
+      <span class="divider">·</span>
+      <span class="stat highlight" id="duplicateCount">0 个重复</span>
+      <span class="divider">·</span>
+      <span class="stat" id="layoutLabel">卡片网格</span>
+    </div>
+
+    <!-- 高频页面区块 -->
+    <section class="freq-pages-section" id="freqPagesSection">
+      <div class="freq-pages-header">
+        <div class="freq-pages-title-group">
+          <h2 class="freq-pages-title">高频页面</h2>
+          <span class="freq-pages-hint">基于访问频次自动推荐 · 右键管理</span>
+        </div>
+        <div class="freq-pages-controls">
+          <button class="freq-clear-btn" id="clearFreqPagesBtn" title="清除高频页面数据">清除</button>
+        </div>
+      </div>
+      <div class="freq-pages-body" id="freqPagesBody">
+        <div class="freq-pages-empty">暂无高频页面数据</div>
+      </div>
+    </section>
+
+    <!-- 主体内容 -->
+    <main class="windows-list" id="windowsContainer">
+    </main>
+
+    <!-- 底部 -->
+    <footer class="page-footer">
+      <p>双击 Command 键可快速切换标签页 · 拖拽标签页可整理窗口 · ⌃D 打开仪表盘 · ⌃1 搜索标签页</p>
+    </footer>
+  </div>
+
+  <!-- 轻提示 -->
+  <div class="toast" id="toast"></div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

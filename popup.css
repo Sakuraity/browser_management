@@ -1,0 +1,432 @@
+/* ─── 基础重置 ─── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 420px;
+  max-height: 580px;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #faf9f7;
+  color: #2c2c2c;
+  line-height: 1.6;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ─── 头部 ─── */
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e8e4df;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-mark {
+  font-size: 16px;
+  color: #c45c3e;
+}
+
+.brand-name {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3a3a3a;
+  letter-spacing: 0.5px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.action-link {
+  background: none;
+  border: none;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+  color: #8a8580;
+  cursor: pointer;
+  padding: 2px 0;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.action-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #c45c3e;
+  transition: width 0.3s ease;
+}
+
+.action-link:hover {
+  color: #c45c3e;
+}
+
+.action-link:hover::after {
+  width: 100%;
+}
+
+.action-primary {
+  color: #c45c3e;
+  font-weight: 500;
+}
+
+.action-primary::after {
+  width: 100%;
+}
+
+/* ─── 统计栏 ─── */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 12px;
+  color: #8a8580;
+  border-bottom: 1px solid #e8e4df;
+  background: #fff;
+}
+
+.stats-bar .divider {
+  color: #c4c0bb;
+}
+
+.stats-bar .stat.highlight {
+  color: #c45c3e;
+  font-weight: 500;
+}
+
+/* ─── 搜索栏 ─── */
+.search-bar {
+  padding: 10px 16px;
+  border-bottom: 1px solid #e8e4df;
+  background: #fff;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e8e4df;
+  border-radius: 6px;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 13px;
+  color: #2c2c2c;
+  background: #faf9f7;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-bar input:focus {
+  border-color: #c45c3e;
+  background: #fff;
+}
+
+.search-bar input::placeholder {
+  color: #a8a3a0;
+}
+
+/* ─── 内容区 ─── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* ─── 窗口组 ─── */
+.window-group {
+  margin-bottom: 12px;
+  background: #fff;
+  border: 1px solid #e8e4df;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f5f3f0;
+  border-bottom: 1px solid #e8e4df;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3a3a3a;
+}
+
+.window-header .window-meta {
+  font-size: 11px;
+  color: #8a8580;
+  font-weight: 400;
+}
+
+.window-header .focused-badge {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #5a9e6b;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+/* ─── 域名组 ─── */
+.domain-group {
+  padding: 8px 14px;
+  border-bottom: 1px solid #f0eeeb;
+}
+
+.domain-group:last-child {
+  border-bottom: none;
+}
+
+.domain-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8a8580;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+/* ─── 标签项 ─── */
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.tab-item:hover {
+  background: #f5f3f0;
+  margin: 0 -6px;
+  padding: 7px 6px;
+}
+
+.tab-favicon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.tab-item:hover .tab-favicon {
+  opacity: 1;
+}
+
+.tab-title {
+  flex: 1;
+  font-size: 13px;
+  color: #2c2c2c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-item:hover .tab-title {
+  color: #c45c3e;
+}
+
+/* 徽章 */
+.duplicate-badge {
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #fdf2ef;
+  color: #c45c3e;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+/* 关闭按钮 */
+.tab-close {
+  padding: 3px 8px;
+  background: none;
+  border: 1px solid #e8e4df;
+  border-radius: 4px;
+  color: #a8a3a0;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.tab-item:hover .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: #c45c3e;
+  border-color: #c45c3e;
+  color: #fff;
+}
+
+/* ─── 底部提示 ─── */
+.popup-footer {
+  padding: 8px 16px;
+  border-top: 1px solid #e8e4df;
+  background: #f5f3f0;
+  text-align: center;
+}
+
+.shortcut-hint {
+  font-size: 11px;
+  color: #a8a3a0;
+  letter-spacing: 0.5px;
+}
+
+/* ─── 滚动条 ─── */
+.content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: #d5d0cb;
+  border-radius: 2px;
+}
+
+/* ─── 高频页面 ─── */
+.freq-pages-section {
+  padding: 10px 16px;
+  border-bottom: 1px solid #e8e4df;
+  background: #fff;
+}
+
+.freq-pages-header {
+  margin-bottom: 8px;
+}
+
+.freq-pages-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8a8580;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.freq-pages-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.freq-pages-list::-webkit-scrollbar {
+  height: 3px;
+}
+
+.freq-pages-list::-webkit-scrollbar-thumb {
+  background: #d5d0cb;
+  border-radius: 2px;
+}
+
+.freq-page-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #faf9f7;
+  border: 1px solid #e8e4df;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  max-width: 160px;
+}
+
+.freq-page-item:hover {
+  border-color: #c45c3e;
+  background: #fdf8f6;
+}
+
+.freq-page-item.pinned {
+  border-color: #c9a227;
+  background: #fdfaf3;
+}
+
+.freq-page-favicon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.freq-page-item:hover .freq-page-favicon {
+  opacity: 1;
+}
+
+.freq-page-title {
+  font-size: 12px;
+  color: #2c2c2c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.freq-page-item:hover .freq-page-title {
+  color: #c45c3e;
+}
+
+.freq-page-count {
+  font-size: 10px;
+  color: #a8a3a0;
+  flex-shrink: 0;
+  background: #f0eeeb;
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+.freq-page-item.pinned .freq-page-count {
+  background: #f5eed8;
+  color: #c9a227;
+}
+
+/* ─── 高频页面右键菜单 ─── */
+.freq-context-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #e8e4df;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  z-index: 1000;
+  min-width: 120px;
+  padding: 4px 0;
+}
+
+.freq-menu-item {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #2c2c2c;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.freq-menu-item:hover {
+  background: #fdf2ef;
+  color: #c45c3e;
+}

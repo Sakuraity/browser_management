@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="options.css">
+  <title>设置 — 浏览器窗口概览</title>
+</head>
+<body>
+  <div class="page">
+    <nav class="top-bar">
+      <div class="brand">
+        <span class="brand-mark">◉</span>
+        <span class="brand-name">浏览器窗口概览</span>
+      </div>
+    </nav>
+
+    <header class="masthead">
+      <p class="kicker">配置</p>
+      <h1 class="headline">设置</h1>
+    </header>
+
+    <main class="settings-body">
+      <section class="setting-section">
+        <h2 class="section-title">重复页面检测</h2>
+        <div class="option-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="enableDuplicateDetection" class="toggle-input">
+            <span class="toggle-text">启用重复页面检测</span>
+          </label>
+        </div>
+        <div class="option-row">
+          <label class="field-label">重复页面处理策略</label>
+          <select id="duplicateAction" class="field-select">
+            <option value="notify">仅提示</option>
+            <option value="close">自动关闭新打开的重复页面</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="setting-section">
+        <h2 class="section-title">分组管理</h2>
+        <div class="option-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="autoGroupByDomain" class="toggle-input">
+            <span class="toggle-text">按域名自动分组</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="setting-section">
+        <h2 class="section-title">窗口管理</h2>
+        <div class="option-row">
+          <label class="field-label">建议最大窗口数量</label>
+          <input type="number" id="maxWindows" class="field-input" min="1" max="10" value="3">
+        </div>
+      </section>
+
+      <section class="setting-section">
+        <h2 class="section-title">快捷键设置</h2>
+        <div class="option-row">
+          <label class="field-label">打开仪表盘快捷键</label>
+          <select id="openDashboardShortcut" class="field-select">
+            <option value="MacCtrl+D">Mac: Control+D / Win: Alt+Shift+D</option>
+            <option value="Command+Shift+D">Mac: Command+Shift+D / Win: Ctrl+Shift+D</option>
+            <option value="Command+Shift+M">Mac: Command+Shift+M / Win: Ctrl+Shift+M</option>
+            <option value="Command+Shift+B">Mac: Command+Shift+B / Win: Ctrl+Shift+B</option>
+            <option value="Command+Shift+P">Mac: Command+Shift+P / Win: Ctrl+Shift+P</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <label class="field-label">关闭重复页面快捷键</label>
+          <select id="closeDuplicatesShortcut" class="field-select">
+            <option value="MacCtrl+X">Mac: Control+X / Win: Alt+Shift+X</option>
+            <option value="Command+Shift+X">Mac: Command+Shift+X / Win: Ctrl+Shift+X</option>
+            <option value="Command+Shift+K">Mac: Command+Shift+K / Win: Ctrl+Shift+K</option>
+            <option value="Command+Shift+W">Mac: Command+Shift+W / Win: Ctrl+Shift+W</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <label class="field-label">快速搜索标签页快捷键</label>
+          <select id="searchTabsShortcut" class="field-select">
+            <option value="MacCtrl+1">Mac: Control+1 / Win: Alt+1</option>
+            <option value="Command+Shift+K">Mac: Command+Shift+K / Win: Ctrl+Shift+K</option>
+            <option value="Command+Shift+F">Mac: Command+Shift+F / Win: Ctrl+Shift+F</option>
+            <option value="MacCtrl+K">Mac: Control+K / Win: Alt+K</option>
+            <option value="MacCtrl+Space">Mac: Control+Space / Win: Alt+Space</option>
+          </select>
+          <p class="field-hint">按下快捷键后弹出搜索面板，可快速查找并切换到已打开的标签页</p>
+        </div>
+        <div class="option-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="enableDoubleCommand" class="toggle-input">
+            <span class="toggle-text">在仪表盘页面启用双击 Command 快速操作</span>
+          </label>
+          <p class="field-hint">在仪表盘页面内，快速双击 Command 键可以快速切换到随机标签页</p>
+        </div>
+        <div class="info-box">
+          <p>💡 提示：全局快捷键需要在 Chrome 扩展管理页面中自定义</p>
+          <p>打开 <code>chrome://extensions/shortcuts</code> 可以自定义快捷键</p>
+        </div>
+      </section>
+
+      <section class="setting-section">
+        <h2 class="section-title">高频页面</h2>
+        <div class="option-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="enableFreqPages" class="toggle-input">
+            <span class="toggle-text">启用高频页面统计</span>
+          </label>
+          <p class="field-hint">自动统计您高频打开的页面，并在仪表盘和Popup中展示快速访问入口</p>
+        </div>
+        <div class="option-row">
+          <label class="field-label">最大展示数量</label>
+          <input type="number" id="freqPagesMaxDisplay" class="field-input" min="5" max="30" value="10">
+          <p class="field-hint">在仪表盘和Popup中最多展示的高频页面数量（5-30）</p>
+        </div>
+        <div class="option-row">
+          <label class="field-label">衰减因子</label>
+          <input type="number" id="freqPagesDecayFactor" class="field-input" min="0.8" max="0.99" step="0.01" value="0.95">
+          <p class="field-hint">历史访问频次的衰减系数（0.8-0.99），值越小衰减越快，近期访问权重越高</p>
+        </div>
+        <div class="option-row">
+          <label class="field-label">排除的域名</label>
+          <input type="text" id="excludedDomains" class="field-input" style="max-width:100%" placeholder="例如：chrome://, about:blank">
+          <p class="field-hint">这些域名的访问将不会被统计，用逗号分隔</p>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button id="saveBtn" class="btn btn-primary">保存设置</button>
+        <button id="resetBtn" class="btn btn-secondary">重置默认</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </main>
+
+    <footer class="page-footer">
+      <p>浏览器窗口概览 · 让标签页管理变得优雅</p>
+    </footer>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

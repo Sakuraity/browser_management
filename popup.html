@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+  <title>浏览器多页面管理</title>
+</head>
+<body>
+  <div class="page">
+    <header class="popup-header">
+      <div class="brand">
+        <span class="brand-mark">◉</span>
+        <span class="brand-name">浏览器窗口概览</span>
+      </div>
+      <div class="header-actions">
+        <button id="openDashboardBtn" class="action-link action-primary">打开仪表盘</button>
+        <button id="closeDuplicatesBtn" class="action-link">清理重复</button>
+        <button id="settingsBtn" class="action-link">设置</button>
+      </div>
+    </header>
+
+    <div class="stats-bar">
+      <span class="stat" id="windowCount">0 个窗口</span>
+      <span class="divider">·</span>
+      <span class="stat" id="tabCount">0 个标签页</span>
+      <span class="divider">·</span>
+      <span class="stat highlight" id="duplicateCount">0 个重复</span>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="popupSearch" placeholder="搜索标签页..." autocomplete="off">
+    </div>
+
+    <div id="freqPagesSection" class="freq-pages-section" style="display:none;">
+      <div class="freq-pages-header">
+        <span class="freq-pages-label">高频页面</span>
+      </div>
+      <div id="freqPagesList" class="freq-pages-list"></div>
+    </div>
+
+    <div id="content" class="content">
+    </div>
+
+    <div class="popup-footer">
+      <span class="shortcut-hint">⌃D 仪表盘 · ⌃1 搜索标签页</span>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

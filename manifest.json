@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "浏览器多页面管理工具",
+  "version": "1.0.0",
+  "description": "智能管理浏览器标签页和窗口，自动分组、检测重复页面",
+  "permissions": [
+    "tabs",
+    "windows",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "commands": {
+    "open-dashboard": {
+      "suggested_key": {
+        "default": "Alt+Shift+D",
+        "mac": "MacCtrl+D"
+      },
+      "description": "打开仪表盘"
+    },
+    "close-duplicates": {
+      "suggested_key": {
+        "default": "Alt+Shift+X",
+        "mac": "MacCtrl+X"
+      },
+      "description": "关闭重复页面"
+    },
+    "search-tabs": {
+      "suggested_key": {
+        "default": "Alt+1",
+        "mac": "MacCtrl+1"
+      },
+      "description": "快速搜索已打开的标签页"
+    }
+  }
+}
