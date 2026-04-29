@@ -139,8 +139,18 @@ function renderResults() {
       </div>
       <span class="result-domain">${escapeHtml(tab.domain)}</span>
       <span class="result-window">窗口${tab.windowIndex}</span>
+      <button class="result-copy-btn" title="复制链接" data-index="${index}">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M3 11V3a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
     `;
 
+    item.querySelector('.result-copy-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      copyTabUrl(index);
+    });
     item.addEventListener('click', (e) => switchToTab(index, e.altKey));
     item.addEventListener('mouseenter', () => {
       selectedIndex = index;
@@ -182,6 +192,14 @@ function handleKeyDown(e) {
     e.preventDefault();
     if (filteredTabs.length > 0) {
       switchToTab(selectedIndex, e.altKey);
+    }
+    return;
+  }
+
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
+    e.preventDefault();
+    if (filteredTabs.length > 0) {
+      copyTabUrl(selectedIndex);
     }
     return;
   }
@@ -250,6 +268,45 @@ async function switchToTab(index, forceSwitch = false) {
       console.error('降级切换也失败:', e2);
     }
   }
+}
+
+async function copyTabUrl(index) {
+  const tab = filteredTabs[index];
+  if (!tab) return;
+
+  try {
+    await navigator.clipboard.writeText(tab.url);
+    showToast('已复制链接');
+  } catch (e) {
+    const textarea = document.createElement('textarea');
+    textarea.value = tab.url;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showToast('已复制链接');
+  }
+}
+
+function showToast(message) {
+  const existing = document.querySelector('.copy-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'copy-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 1500);
 }
 
 function closeSearchTab() {

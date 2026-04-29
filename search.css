@@ -168,6 +168,31 @@ body {
   flex-shrink: 0;
 }
 
+.result-copy-btn {
+  background: none;
+  border: none;
+  color: #5a5550;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.result-item:hover .result-copy-btn,
+.result-item.selected .result-copy-btn {
+  opacity: 1;
+}
+
+.result-copy-btn:hover {
+  color: #c45c3e;
+  background: rgba(196, 92, 62, 0.12);
+}
+
 .empty-results {
   text-align: center;
   padding: 40px 20px;
@@ -197,4 +222,27 @@ body {
 .highlight {
   color: #c45c3e;
   font-weight: 500;
+}
+
+.copy-toast {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #2a2a2a;
+  color: #e8e4df;
+  font-size: 13px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(196, 92, 62, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: all 0.25s ease;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.copy-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
