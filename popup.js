@@ -1,7 +1,13 @@
 let allWindows = [];
 let searchQuery = '';
+let popupWindowId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (currentTab) {
+    popupWindowId = currentTab.windowId;
+  }
+
   await loadTabs();
   await loadFreqPages();
 
@@ -169,12 +175,8 @@ function createTabItem(tab, isDuplicate) {
   });
   tabItem.appendChild(closeBtn);
 
-  tabItem.addEventListener('click', () => {
-    chrome.runtime.sendMessage({
-      action: 'switchToTab',
-      tabId: tab.id,
-      windowId: tab.windowId
-    });
+  tabItem.addEventListener('click', async () => {
+    await switchToTabSmart(tab);
   });
 
   return tabItem;
@@ -297,11 +299,66 @@ function showFreqPageMenu(e, page) {
     closeMenu();
   });
   menu.querySelector('[data-action="copy"]').addEventListener('click', () => {
-    navigator.clipboard.writeText(page.url);
+    copyToClipboard(page.url);
     closeMenu();
   });
 
   setTimeout(() => {
     document.addEventListener('click', closeMenu, { once: true });
   }, 10);
+}
+
+async function switchToTabSmart(tab) {
+  try {
+    if (tab.windowId === popupWindowId) {
+      await chrome.tabs.update(tab.id, { active: true });
+      window.close();
+    } else {
+      const targetTab = await chrome.tabs.get(tab.id);
+      const isInGroup = typeof targetTab.groupId === 'number' && targetTab.groupId !== -1;
+      const isPinned = targetTab.pinned;
+
+      if (isInGroup || isPinned) {
+        await chrome.tabs.create({ url: tab.url, windowId: popupWindowId, active: true });
+        window.close();
+      } else {
+        const sameWindowTabs = await chrome.tabs.query({ windowId: popupWindowId });
+        const existingTab = sameWindowTabs.find(t => t.url === tab.url);
+
+        if (existingTab) {
+          await chrome.tabs.update(existingTab.id, { active: true });
+          await chrome.tabs.remove(tab.id);
+          window.close();
+        } else {
+          await chrome.tabs.move(tab.id, { windowId: popupWindowId, index: -1 });
+          await chrome.tabs.update(tab.id, { active: true });
+          window.close();
+        }
+      }
+    }
+  } catch (e) {
+    console.error('切换标签页失败:', e);
+    try {
+      await chrome.tabs.update(tab.id, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+      window.close();
+    } catch (e2) {
+      console.error('降级切换也失败:', e2);
+    }
+  }
+}
+
+function copyToClipboard(text) {
+  try {
+    navigator.clipboard.writeText(text);
+  } catch (e) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
 }

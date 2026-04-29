@@ -3,9 +3,9 @@ let searchQuery = '';
 let currentLayout = 'grid';
 let magazineIndex = 0;
 let draggedTab = null;
-let autoRefreshInterval = null;
 let lastCommandPressTime = 0;
 let settings = { enableDoubleCommand: true };
+let urlCountMap = new Map();
 
 const layoutLabels = {
   grid: '卡片网格',
@@ -164,7 +164,19 @@ function getVisibleWindows() {
 }
 
 function startAutoRefresh() {
-  autoRefreshInterval = setInterval(loadTabs, 3000);
+  loadTabs();
+  chrome.tabs.onCreated.addListener(() => loadTabs());
+  chrome.tabs.onRemoved.addListener(() => loadTabs());
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+    if (changeInfo.url || changeInfo.title || changeInfo.status === 'complete') {
+      loadTabs();
+    }
+  });
+  chrome.tabs.onMoved.addListener(() => loadTabs());
+  chrome.tabs.onAttached.addListener(() => loadTabs());
+  chrome.tabs.onDetached.addListener(() => loadTabs());
+  chrome.windows.onCreated.addListener(() => loadTabs());
+  chrome.windows.onRemoved.addListener(() => loadTabs());
 }
 
 async function loadTabs() {
@@ -179,19 +191,19 @@ async function loadTabs() {
 
 function updateStats() {
   let totalTabs = 0;
-  const urlCount = new Map();
+  urlCountMap = new Map();
 
   allWindows.forEach(w => {
     w.tabs.forEach(t => {
       totalTabs++;
       if (t.url && !t.url.startsWith('chrome://')) {
-        urlCount.set(t.url, (urlCount.get(t.url) || 0) + 1);
+        urlCountMap.set(t.url, (urlCountMap.get(t.url) || 0) + 1);
       }
     });
   });
 
   let dupes = 0;
-  urlCount.forEach((c) => { if (c > 1) dupes += c - 1; });
+  urlCountMap.forEach((c) => { if (c > 1) dupes += c - 1; });
 
   document.getElementById('windowCount').textContent = `${allWindows.length} 个窗口`;
   document.getElementById('tabCount').textContent = `${totalTabs} 个标签页`;
@@ -305,24 +317,61 @@ function createTabCard(tab, windowId, windowFocused) {
   card.className = `tab-card ${isActive ? 'active-tab' : ''} ${isDup ? 'duplicate-tab' : ''}`;
   card.draggable = true;
 
-  const favicon = tab.favIconUrl || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect fill="%23ccc" width="16" height="16" rx="2"/></svg>';
+  const faviconImg = document.createElement('img');
+  faviconImg.className = 'tab-favicon';
+  faviconImg.src = tab.favIconUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Crect fill="%23ccc" width="16" height="16" rx="2"/%3E%3C/svg%3E';
+  faviconImg.alt = '';
 
-  let badges = '';
-  if (isActive) badges += '<span class="badge badge-current">当前</span>';
-  if (isDup) badges += '<span class="badge badge-duplicate">重复</span>';
+  const titleSpan = document.createElement('span');
+  titleSpan.className = 'tab-title';
+  titleSpan.title = tab.title || '新标签页';
+  titleSpan.textContent = tab.title || '新标签页';
 
-  card.innerHTML = `
-    <div class="tab-card-header">
-      <img class="tab-favicon" src="${favicon}" alt="">
-      <span class="tab-title" title="${escapeHtml(tab.title || '新标签页')}">${escapeHtml(tab.title || '新标签页')}</span>
-    </div>
-    ${badges ? `<div class="tab-badges">${badges}</div>` : ''}
-    <div class="tab-url" title="${escapeHtml(tab.url || '')}">${escapeHtml(tab.url || '')}</div>
-    <div class="tab-card-footer">
-      <button class="tab-btn primary" data-action="switch">切换</button>
-      <button class="tab-btn" data-action="close">关闭</button>
-    </div>
-  `;
+  const cardHeader = document.createElement('div');
+  cardHeader.className = 'tab-card-header';
+  cardHeader.appendChild(faviconImg);
+  cardHeader.appendChild(titleSpan);
+
+  let badgesDiv = null;
+  if (isActive || isDup) {
+    badgesDiv = document.createElement('div');
+    badgesDiv.className = 'tab-badges';
+    if (isActive) {
+      const badge = document.createElement('span');
+      badge.className = 'badge badge-current';
+      badge.textContent = '当前';
+      badgesDiv.appendChild(badge);
+    }
+    if (isDup) {
+      const badge = document.createElement('span');
+      badge.className = 'badge badge-duplicate';
+      badge.textContent = '重复';
+      badgesDiv.appendChild(badge);
+    }
+  }
+
+  const urlDiv = document.createElement('div');
+  urlDiv.className = 'tab-url';
+  urlDiv.title = tab.url || '';
+  urlDiv.textContent = tab.url || '';
+
+  const footerDiv = document.createElement('div');
+  footerDiv.className = 'tab-card-footer';
+  const switchBtn = document.createElement('button');
+  switchBtn.className = 'tab-btn primary';
+  switchBtn.dataset.action = 'switch';
+  switchBtn.textContent = '切换';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'tab-btn';
+  closeBtn.dataset.action = 'close';
+  closeBtn.textContent = '关闭';
+  footerDiv.appendChild(switchBtn);
+  footerDiv.appendChild(closeBtn);
+
+  card.appendChild(cardHeader);
+  if (badgesDiv) card.appendChild(badgesDiv);
+  card.appendChild(urlDiv);
+  card.appendChild(footerDiv);
 
   // 点击切换
   card.addEventListener('click', (e) => {
@@ -331,12 +380,12 @@ function createTabCard(tab, windowId, windowFocused) {
     }
   });
 
-  card.querySelector('[data-action="switch"]').addEventListener('click', (e) => {
+  switchBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     switchToTab(tab.id, windowId);
   });
 
-  card.querySelector('[data-action="close"]').addEventListener('click', (e) => {
+  closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     closeTab(tab.id);
   });
@@ -388,9 +437,7 @@ function filterTabs(tabs) {
 
 function checkIsDuplicate(tab) {
   if (!tab.url || tab.url.startsWith('chrome://')) return false;
-  let count = 0;
-  allWindows.forEach(w => w.tabs.forEach(t => { if (t.url === tab.url) count++; }));
-  return count > 1;
+  return (urlCountMap.get(tab.url) || 0) > 1;
 }
 
 async function switchToTab(tabId, windowId) {
@@ -425,7 +472,11 @@ async function closeWindow(windowId) {
 
 async function closeOtherWindows(keepId) {
   try {
-    const others = allWindows.filter(w => w.id !== keepId);
+    const dashboardUrl = chrome.runtime.getURL('dashboard.html');
+    const dashboardTab = await chrome.tabs.query({ url: dashboardUrl });
+    const dashboardWindowId = dashboardTab.length > 0 ? dashboardTab[0].windowId : null;
+
+    const others = allWindows.filter(w => w.id !== keepId && w.id !== dashboardWindowId);
     for (const w of others) await chrome.windows.remove(w.id);
     await loadTabs();
     showToast(`已关闭 ${others.length} 个窗口`, 'success');
@@ -526,33 +577,71 @@ function renderFreqPages(pages) {
     const item = document.createElement('div');
     item.className = `freq-page-card ${page.pinned ? 'pinned' : ''}`;
 
-    const favicon = page.favIconUrl || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect fill="%23ccc" width="16" height="16" rx="2"/></svg>';
+    const faviconImg = document.createElement('img');
+    faviconImg.className = 'freq-page-card-favicon';
+    faviconImg.src = page.favIconUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Crect fill="%23ccc" width="16" height="16" rx="2"/%3E%3C/svg%3E';
+    faviconImg.alt = '';
 
     const barWidth = Math.max(Math.round((page.count / maxCount) * 100), 8);
 
-    item.innerHTML = `
-      <div class="freq-page-card-header">
-        <img class="freq-page-card-favicon" src="${favicon}" alt="">
-        <div class="freq-page-card-info">
-          <div class="freq-page-card-title" title="${escapeHtml(page.title)}">${escapeHtml(page.title)}</div>
-          <div class="freq-page-card-url" title="${escapeHtml(page.url)}">${escapeHtml(page.url)}</div>
-        </div>
-      </div>
-      <div class="freq-page-card-bar-wrapper">
-        <div class="freq-page-card-bar" style="width: ${barWidth}%"></div>
-      </div>
-      <div class="freq-page-card-footer">
-        <span class="freq-page-card-count">${page.count} 次访问</span>
-        ${page.pinned ? '<span class="freq-page-card-pin">已置顶</span>' : ''}
-        <div class="freq-page-card-actions">
-          <button class="freq-page-card-btn" data-action="pin">${page.pinned ? '取消置顶' : '置顶'}</button>
-          <button class="freq-page-card-btn" data-action="remove">移除</button>
-          <button class="freq-page-card-btn primary" data-action="open">打开</button>
-        </div>
-      </div>
+    const cardInfo = document.createElement('div');
+    cardInfo.className = 'freq-page-card-info';
+    cardInfo.innerHTML = `
+      <div class="freq-page-card-title" title="${escapeHtml(page.title)}">${escapeHtml(page.title)}</div>
+      <div class="freq-page-card-url" title="${escapeHtml(page.url)}">${escapeHtml(page.url)}</div>
     `;
 
-    item.querySelector('[data-action="open"]').addEventListener('click', async (e) => {
+    const cardHeader = document.createElement('div');
+    cardHeader.className = 'freq-page-card-header';
+    cardHeader.appendChild(faviconImg);
+    cardHeader.appendChild(cardInfo);
+
+    const barWrapper = document.createElement('div');
+    barWrapper.className = 'freq-page-card-bar-wrapper';
+    const bar = document.createElement('div');
+    bar.className = 'freq-page-card-bar';
+    bar.style.width = `${barWidth}%`;
+    barWrapper.appendChild(bar);
+
+    const cardFooter = document.createElement('div');
+    cardFooter.className = 'freq-page-card-footer';
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'freq-page-card-count';
+    countSpan.textContent = `${page.count} 次访问`;
+    cardFooter.appendChild(countSpan);
+
+    if (page.pinned) {
+      const pinSpan = document.createElement('span');
+      pinSpan.className = 'freq-page-card-pin';
+      pinSpan.textContent = '已置顶';
+      cardFooter.appendChild(pinSpan);
+    }
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'freq-page-card-actions';
+    const pinBtn = document.createElement('button');
+    pinBtn.className = 'freq-page-card-btn';
+    pinBtn.dataset.action = 'pin';
+    pinBtn.textContent = page.pinned ? '取消置顶' : '置顶';
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'freq-page-card-btn';
+    removeBtn.dataset.action = 'remove';
+    removeBtn.textContent = '移除';
+    const openBtn = document.createElement('button');
+    openBtn.className = 'freq-page-card-btn primary';
+    openBtn.dataset.action = 'open';
+    openBtn.textContent = '打开';
+    actionsDiv.appendChild(pinBtn);
+    actionsDiv.appendChild(removeBtn);
+    actionsDiv.appendChild(openBtn);
+    cardFooter.appendChild(actionsDiv);
+
+    item.appendChild(cardHeader);
+    item.appendChild(barWrapper);
+    item.appendChild(cardFooter);
+
+    openBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const result = await chrome.runtime.sendMessage({ action: 'openFreqPage', url: page.url });
       if (result && result.switched) {
@@ -560,14 +649,14 @@ function renderFreqPages(pages) {
       }
     });
 
-    item.querySelector('[data-action="pin"]').addEventListener('click', async (e) => {
+    pinBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const action = page.pinned ? 'unpinFreqPage' : 'pinFreqPage';
       await chrome.runtime.sendMessage({ action, url: page.url });
       await loadFreqPages();
     });
 
-    item.querySelector('[data-action="remove"]').addEventListener('click', async (e) => {
+    removeBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       await chrome.runtime.sendMessage({ action: 'removeFreqPage', url: page.url });
       await loadFreqPages();

@@ -89,8 +89,8 @@ async function getSettings() {
   const result = await chrome.storage.sync.get({
     enableDuplicateDetection: true,
     duplicateAction: 'notify',
-    autoGroupByDomain: true,
     maxWindows: 3,
+    enableDoubleCommand: true,
     enableFreqPages: true,
     freqPagesMaxDisplay: 10,
     freqPagesDecayFactor: 0.95,
@@ -108,8 +108,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true;
   } else if (request.action === 'switchToTab') {
     chrome.tabs.update(request.tabId, {active: true}).then(() => {
-      chrome.windows.update(request.windowId, {focused: true});
+      return chrome.windows.update(request.windowId, {focused: true});
+    }).then(() => {
       sendResponse({success: true});
+    }).catch(err => {
+      console.error('switchToTab error:', err);
+      sendResponse({success: false, error: err.message});
     });
     return true;
   } else if (request.action === 'closeDuplicates') {
@@ -214,10 +218,10 @@ async function recordFreqPage(tab) {
     if (excluded.some(d => tab.url.toLowerCase().includes(d))) return;
   }
 
-  await applyDecay();
-
   const result = await chrome.storage.local.get('freqPagesData');
-  const data = result.freqPagesData || [];
+  let data = result.freqPagesData || [];
+
+  data = applyDecayInMemory(data);
 
   const existing = data.find(item => item.url === tab.url);
   if (existing) {
@@ -261,13 +265,22 @@ async function updateFreqPageInfo(tab) {
 
 async function applyDecay() {
   const settings = await getSettings();
-  const decayFactor = settings.freqPagesDecayFactor || 0.95;
-
   const result = await chrome.storage.local.get('freqPagesData');
-  const data = result.freqPagesData || [];
+  let data = result.freqPagesData || [];
 
+  data = applyDecayInMemory(data, settings.freqPagesDecayFactor);
+
+  data.sort((a, b) => {
+    if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
+    return b.count - a.count;
+  });
+
+  await chrome.storage.local.set({ freqPagesData: data.slice(0, 100) });
+}
+
+function applyDecayInMemory(data, decayFactorOverride) {
+  const decayFactor = decayFactorOverride || 0.95;
   const now = Date.now();
-  let changed = false;
 
   for (const item of data) {
     if (item.pinned) continue;
@@ -279,27 +292,10 @@ async function applyDecay() {
       for (let i = 0; i < Math.min(decayRounds, 30); i++) {
         item.count = item.count * decayFactor;
       }
-      changed = true;
     }
   }
 
-  if (changed) {
-    const before = data.length;
-    const filtered = data.filter(item => item.pinned || item.count >= 0.5);
-    if (filtered.length < before) {
-      filtered.sort((a, b) => {
-        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
-        return b.count - a.count;
-      });
-      await chrome.storage.local.set({ freqPagesData: filtered.slice(0, 100) });
-    } else {
-      data.sort((a, b) => {
-        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
-        return b.count - a.count;
-      });
-      await chrome.storage.local.set({ freqPagesData: data.slice(0, 100) });
-    }
-  }
+  return data.filter(item => item.pinned || item.count >= 0.5);
 }
 
 async function getFreqPages(limit = 10) {

@@ -41,16 +41,6 @@
       </section>
 
       <section class="setting-section">
-        <h2 class="section-title">分组管理</h2>
-        <div class="option-row">
-          <label class="toggle-label">
-            <input type="checkbox" id="autoGroupByDomain" class="toggle-input">
-            <span class="toggle-text">按域名自动分组</span>
-          </label>
-        </div>
-      </section>
-
-      <section class="setting-section">
         <h2 class="section-title">窗口管理</h2>
         <div class="option-row">
           <label class="field-label">建议最大窗口数量</label>
@@ -61,36 +51,6 @@
       <section class="setting-section">
         <h2 class="section-title">快捷键设置</h2>
         <div class="option-row">
-          <label class="field-label">打开仪表盘快捷键</label>
-          <select id="openDashboardShortcut" class="field-select">
-            <option value="MacCtrl+D">Mac: Control+D / Win: Alt+Shift+D</option>
-            <option value="Command+Shift+D">Mac: Command+Shift+D / Win: Ctrl+Shift+D</option>
-            <option value="Command+Shift+M">Mac: Command+Shift+M / Win: Ctrl+Shift+M</option>
-            <option value="Command+Shift+B">Mac: Command+Shift+B / Win: Ctrl+Shift+B</option>
-            <option value="Command+Shift+P">Mac: Command+Shift+P / Win: Ctrl+Shift+P</option>
-          </select>
-        </div>
-        <div class="option-row">
-          <label class="field-label">关闭重复页面快捷键</label>
-          <select id="closeDuplicatesShortcut" class="field-select">
-            <option value="MacCtrl+X">Mac: Control+X / Win: Alt+Shift+X</option>
-            <option value="Command+Shift+X">Mac: Command+Shift+X / Win: Ctrl+Shift+X</option>
-            <option value="Command+Shift+K">Mac: Command+Shift+K / Win: Ctrl+Shift+K</option>
-            <option value="Command+Shift+W">Mac: Command+Shift+W / Win: Ctrl+Shift+W</option>
-          </select>
-        </div>
-        <div class="option-row">
-          <label class="field-label">快速搜索标签页快捷键</label>
-          <select id="searchTabsShortcut" class="field-select">
-            <option value="MacCtrl+1">Mac: Control+1 / Win: Alt+1</option>
-            <option value="Command+Shift+K">Mac: Command+Shift+K / Win: Ctrl+Shift+K</option>
-            <option value="Command+Shift+F">Mac: Command+Shift+F / Win: Ctrl+Shift+F</option>
-            <option value="MacCtrl+K">Mac: Control+K / Win: Alt+K</option>
-            <option value="MacCtrl+Space">Mac: Control+Space / Win: Alt+Space</option>
-          </select>
-          <p class="field-hint">按下快捷键后弹出搜索面板，可快速查找并切换到已打开的标签页</p>
-        </div>
-        <div class="option-row">
           <label class="toggle-label">
             <input type="checkbox" id="enableDoubleCommand" class="toggle-input">
             <span class="toggle-text">在仪表盘页面启用双击 Command 快速操作</span>
@@ -98,8 +58,14 @@
           <p class="field-hint">在仪表盘页面内，快速双击 Command 键可以快速切换到随机标签页</p>
         </div>
         <div class="info-box">
-          <p>💡 提示：全局快捷键需要在 Chrome 扩展管理页面中自定义</p>
-          <p>打开 <code>chrome://extensions/shortcuts</code> 可以自定义快捷键</p>
+          <p>💡 快捷键需要在 Chrome 扩展管理页面中自定义</p>
+          <p>当前已注册的快捷键：</p>
+          <ul style="margin:8px 0 0 20px;font-size:13px;color:#666;line-height:1.8;">
+            <li><strong>打开仪表盘</strong>：Mac Control+D / Win Alt+Shift+D</li>
+            <li><strong>关闭重复页面</strong>：Mac Control+X / Win Alt+Shift+X</li>
+            <li><strong>搜索标签页</strong>：Mac Control+1 / Win Alt+1</li>
+          </ul>
+          <p style="margin-top:10px;">打开 <code>chrome://extensions/shortcuts</code> 可以自定义以上快捷键</p>
         </div>
       </section>
 

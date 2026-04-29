@@ -10,11 +10,7 @@ async function loadSettings() {
   
   document.getElementById('enableDuplicateDetection').checked = settings.enableDuplicateDetection;
   document.getElementById('duplicateAction').value = settings.duplicateAction;
-  document.getElementById('autoGroupByDomain').checked = settings.autoGroupByDomain;
   document.getElementById('maxWindows').value = settings.maxWindows;
-  document.getElementById('openDashboardShortcut').value = settings.openDashboardShortcut;
-  document.getElementById('closeDuplicatesShortcut').value = settings.closeDuplicatesShortcut;
-  document.getElementById('searchTabsShortcut').value = settings.searchTabsShortcut;
   document.getElementById('enableDoubleCommand').checked = settings.enableDoubleCommand;
   document.getElementById('enableFreqPages').checked = settings.enableFreqPages;
   document.getElementById('freqPagesMaxDisplay').value = settings.freqPagesMaxDisplay;
@@ -26,11 +22,7 @@ async function saveSettings() {
   const settings = {
     enableDuplicateDetection: document.getElementById('enableDuplicateDetection').checked,
     duplicateAction: document.getElementById('duplicateAction').value,
-    autoGroupByDomain: document.getElementById('autoGroupByDomain').checked,
     maxWindows: parseInt(document.getElementById('maxWindows').value),
-    openDashboardShortcut: document.getElementById('openDashboardShortcut').value,
-    closeDuplicatesShortcut: document.getElementById('closeDuplicatesShortcut').value,
-    searchTabsShortcut: document.getElementById('searchTabsShortcut').value,
     enableDoubleCommand: document.getElementById('enableDoubleCommand').checked,
     enableFreqPages: document.getElementById('enableFreqPages').checked,
     freqPagesMaxDisplay: parseInt(document.getElementById('freqPagesMaxDisplay').value),
@@ -47,11 +39,7 @@ async function resetSettings() {
   const defaultSettings = {
     enableDuplicateDetection: true,
     duplicateAction: 'notify',
-    autoGroupByDomain: true,
     maxWindows: 3,
-    openDashboardShortcut: 'MacCtrl+D',
-    closeDuplicatesShortcut: 'MacCtrl+X',
-    searchTabsShortcut: 'MacCtrl+1',
     enableDoubleCommand: true,
     enableFreqPages: true,
     freqPagesMaxDisplay: 10,
@@ -69,11 +57,7 @@ async function getSettings() {
   const result = await chrome.storage.sync.get({
     enableDuplicateDetection: true,
     duplicateAction: 'notify',
-    autoGroupByDomain: true,
     maxWindows: 3,
-    openDashboardShortcut: 'MacCtrl+D',
-    closeDuplicatesShortcut: 'MacCtrl+X',
-    searchTabsShortcut: 'MacCtrl+1',
     enableDoubleCommand: true,
     enableFreqPages: true,
     freqPagesMaxDisplay: 10,

@@ -14,6 +14,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadTabs();
   renderResults();
 
+  chrome.tabs.onCreated.addListener(() => refreshData());
+  chrome.tabs.onRemoved.addListener(() => refreshData());
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+    if (changeInfo.url || changeInfo.title || changeInfo.status === 'complete') {
+      refreshData();
+    }
+  });
+  chrome.tabs.onMoved.addListener(() => refreshData());
+  chrome.tabs.onAttached.addListener(() => refreshData());
+  chrome.tabs.onDetached.addListener(() => refreshData());
+  chrome.windows.onCreated.addListener(() => refreshData());
+  chrome.windows.onRemoved.addListener(() => refreshData());
+
   const searchInput = document.getElementById('searchInput');
   searchInput.addEventListener('input', () => {
     filterTabs();
@@ -68,6 +81,12 @@ async function loadTabs() {
   filteredTabs = [...allTabs];
 }
 
+async function refreshData() {
+  await loadTabs();
+  filterTabs();
+  renderResults();
+}
+
 function filterTabs() {
   const query = document.getElementById('searchInput').value.trim().toLowerCase();
 
@@ -89,16 +108,12 @@ function filterTabs() {
     const bTitle = b.title.toLowerCase();
     const aDomain = a.domain.toLowerCase();
     const bDomain = b.domain.toLowerCase();
+    const aSearchText = `${aTitle} ${aDomain}`;
+    const bSearchText = `${bTitle} ${bDomain}`;
 
-    const aStarts = aTitle.startsWith(query) || aDomain.startsWith(query);
-    const bStarts = bTitle.startsWith(query) || bDomain.startsWith(query);
-    if (aStarts && !bStarts) return -1;
-    if (!aStarts && bStarts) return 1;
-
-    const aInTitle = aTitle.includes(query);
-    const bInTitle = bTitle.includes(query);
-    if (aInTitle && !bInTitle) return -1;
-    if (!aInTitle && bInTitle) return 1;
+    const aScore = computeMatchScore(aSearchText, terms);
+    const bScore = computeMatchScore(bSearchText, terms);
+    if (aScore !== bScore) return bScore - aScore;
 
     return 0;
   });
@@ -125,29 +140,48 @@ function renderResults() {
     item.className = `result-item ${index === selectedIndex ? 'selected' : ''}`;
     item.dataset.index = index;
 
-    const favicon = tab.favIconUrl || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect fill="%23555" width="16" height="16" rx="2"/></svg>';
+    const faviconImg = document.createElement('img');
+    faviconImg.className = 'result-favicon';
+    faviconImg.src = tab.favIconUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Crect fill="%23555" width="16" height="16" rx="2"/%3E%3C/svg%3E';
+    faviconImg.alt = '';
 
     const query = document.getElementById('searchInput').value.trim().toLowerCase();
     const titleHtml = query ? highlightMatch(tab.title, query) : escapeHtml(tab.title);
     const urlHtml = query ? highlightMatch(truncateUrl(tab.url), query) : escapeHtml(truncateUrl(tab.url));
 
-    item.innerHTML = `
-      <img class="result-favicon" src="${favicon}" alt="">
-      <div class="result-info">
-        <div class="result-title">${titleHtml}</div>
-        <div class="result-url">${urlHtml}</div>
-      </div>
-      <span class="result-domain">${escapeHtml(tab.domain)}</span>
-      <span class="result-window">窗口${tab.windowIndex}</span>
-      <button class="result-copy-btn" title="复制链接" data-index="${index}">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
-          <path d="M3 11V3a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        </svg>
-      </button>
+    const resultInfo = document.createElement('div');
+    resultInfo.className = 'result-info';
+    resultInfo.innerHTML = `
+      <div class="result-title">${titleHtml}</div>
+      <div class="result-url">${urlHtml}</div>
     `;
 
-    item.querySelector('.result-copy-btn').addEventListener('click', (e) => {
+    const domainSpan = document.createElement('span');
+    domainSpan.className = 'result-domain';
+    domainSpan.textContent = tab.domain;
+
+    const windowSpan = document.createElement('span');
+    windowSpan.className = 'result-window';
+    windowSpan.textContent = `窗口${tab.windowIndex}`;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'result-copy-btn';
+    copyBtn.title = '复制链接';
+    copyBtn.dataset.index = index;
+    copyBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M3 11V3a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    `;
+
+    item.appendChild(faviconImg);
+    item.appendChild(resultInfo);
+    item.appendChild(domainSpan);
+    item.appendChild(windowSpan);
+    item.appendChild(copyBtn);
+
+    copyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       copyTabUrl(index);
     });
@@ -239,8 +273,9 @@ async function switchToTab(index, forceSwitch = false) {
     } else {
       const targetTab = await chrome.tabs.get(tab.id);
       const isInGroup = typeof targetTab.groupId === 'number' && targetTab.groupId !== -1;
+      const isPinned = targetTab.pinned;
 
-      if (isInGroup) {
+      if (isInGroup || isPinned) {
         await chrome.tabs.create({ url: tab.url, windowId: searchWindowId, active: true });
         closeSearchTab();
       } else {
@@ -344,4 +379,16 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function computeMatchScore(text, terms) {
+  let score = 0;
+  for (const term of terms) {
+    if (text.startsWith(term)) {
+      score += 3;
+    } else if (text.includes(term)) {
+      score += 1;
+    }
+  }
+  return score;
 }
