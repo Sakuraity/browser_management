@@ -1,8 +1,12 @@
 let allTabs = [];
 let filteredTabs = [];
+let historyItems = [];
 let selectedIndex = 0;
 let searchTabId = null;
 let searchWindowId = null;
+
+const HISTORY_MAX_RESULTS = 15;
+const HISTORY_DAYS = 7;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -14,22 +18,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadTabs();
   renderResults();
 
-  chrome.tabs.onCreated.addListener(() => refreshData());
-  chrome.tabs.onRemoved.addListener(() => refreshData());
+  chrome.tabs.onCreated.addListener(() => refreshTabs());
+  chrome.tabs.onRemoved.addListener(() => refreshTabs());
   chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
     if (changeInfo.url || changeInfo.title || changeInfo.status === 'complete') {
-      refreshData();
+      refreshTabs();
     }
   });
-  chrome.tabs.onMoved.addListener(() => refreshData());
-  chrome.tabs.onAttached.addListener(() => refreshData());
-  chrome.tabs.onDetached.addListener(() => refreshData());
-  chrome.windows.onCreated.addListener(() => refreshData());
-  chrome.windows.onRemoved.addListener(() => refreshData());
+  chrome.tabs.onMoved.addListener(() => refreshTabs());
+  chrome.tabs.onAttached.addListener(() => refreshTabs());
+  chrome.tabs.onDetached.addListener(() => refreshTabs());
+  chrome.windows.onCreated.addListener(() => refreshTabs());
+  chrome.windows.onRemoved.addListener(() => refreshTabs());
 
   const searchInput = document.getElementById('searchInput');
-  searchInput.addEventListener('input', () => {
+  searchInput.addEventListener('input', async () => {
     filterTabs();
+    await searchHistory();
+    selectedIndex = 0;
     renderResults();
   });
 
@@ -81,9 +87,10 @@ async function loadTabs() {
   filteredTabs = [...allTabs];
 }
 
-async function refreshData() {
+async function refreshTabs() {
   await loadTabs();
   filterTabs();
+  selectedIndex = 0;
   renderResults();
 }
 
@@ -121,83 +128,292 @@ function filterTabs() {
   selectedIndex = 0;
 }
 
-function renderResults() {
-  const container = document.getElementById('results');
+async function searchHistory() {
+  const query = document.getElementById('searchInput').value.trim();
 
-  if (filteredTabs.length === 0) {
-    container.innerHTML = `
-      <div class="empty-results">
-        <div class="empty-results-icon">🔍</div>
-        <div class="empty-results-text">未找到匹配的标签页</div>
-      </div>`;
+  if (!query) {
+    historyItems = [];
     return;
   }
 
+  if (typeof chrome.history === 'undefined' || !chrome.history.search) {
+    historyItems = [];
+    return;
+  }
+
+  try {
+    const startTime = Date.now() - HISTORY_DAYS * 24 * 60 * 60 * 1000;
+    const terms = query.toLowerCase().split(/\s+/);
+    const apiText = terms[0];
+
+    const results = await chrome.history.search({
+      text: apiText,
+      startTime: startTime,
+      maxResults: 200
+    });
+
+    const openTabUrls = new Set(filteredTabs.map(t => t.url));
+
+    historyItems = results
+      .filter(item => item.url && !item.url.startsWith('chrome://') && !item.url.startsWith('chrome-extension://'))
+      .filter(item => !openTabUrls.has(item.url))
+      .filter(item => {
+        const searchText = `${item.title || ''} ${item.url}`.toLowerCase();
+        return terms.every(term => searchText.includes(term));
+      })
+      .slice(0, HISTORY_MAX_RESULTS)
+      .map(item => {
+        let domain = '';
+        try {
+          domain = new URL(item.url).hostname;
+        } catch (e) {
+          domain = '其他';
+        }
+        return {
+          title: item.title || item.url,
+          url: item.url,
+          domain: domain,
+          lastVisitTime: item.lastVisitTime || 0,
+          visitCount: item.visitCount || 0
+        };
+      });
+  } catch (e) {
+    historyItems = [];
+  }
+}
+
+function getTotalItemCount() {
+  return filteredTabs.length + historyItems.length;
+}
+
+function getItemByGlobalIndex(index) {
+  if (index < filteredTabs.length) {
+    return { type: 'tab', data: filteredTabs[index], localIndex: index };
+  }
+  const historyIndex = index - filteredTabs.length;
+  if (historyIndex < historyItems.length) {
+    return { type: 'history', data: historyItems[historyIndex], localIndex: historyIndex };
+  }
+  return null;
+}
+
+function renderResults() {
+  const container = document.getElementById('results');
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const hasQuery = query.length > 0;
+  const totalItems = filteredTabs.length + historyItems.length;
+
   container.innerHTML = '';
 
-  filteredTabs.forEach((tab, index) => {
-    const item = document.createElement('div');
-    item.className = `result-item ${index === selectedIndex ? 'selected' : ''}`;
-    item.dataset.index = index;
+  if (totalItems === 0) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'empty-results';
 
-    const faviconImg = document.createElement('img');
-    faviconImg.className = 'result-favicon';
-    faviconImg.src = tab.favIconUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Crect fill="%23555" width="16" height="16" rx="2"/%3E%3C/svg%3E';
-    faviconImg.alt = '';
+    const emptyIcon = document.createElement('div');
+    emptyIcon.className = 'empty-results-icon';
+    emptyIcon.textContent = '🔍';
 
-    const query = document.getElementById('searchInput').value.trim().toLowerCase();
-    const titleHtml = query ? highlightMatch(tab.title, query) : escapeHtml(tab.title);
-    const urlHtml = query ? highlightMatch(truncateUrl(tab.url), query) : escapeHtml(truncateUrl(tab.url));
+    const emptyText = document.createElement('div');
+    emptyText.className = 'empty-results-text';
+    emptyText.textContent = hasQuery ? '未找到匹配的结果' : '未找到匹配的标签页';
 
-    const resultInfo = document.createElement('div');
-    resultInfo.className = 'result-info';
-    resultInfo.innerHTML = `
-      <div class="result-title">${titleHtml}</div>
-      <div class="result-url">${urlHtml}</div>
-    `;
+    emptyDiv.appendChild(emptyIcon);
+    emptyDiv.appendChild(emptyText);
+    container.appendChild(emptyDiv);
+    return;
+  }
 
-    const domainSpan = document.createElement('span');
-    domainSpan.className = 'result-domain';
-    domainSpan.textContent = tab.domain;
+  if (filteredTabs.length > 0) {
+    if (hasQuery) {
+      const header = document.createElement('div');
+      header.className = 'section-header';
+      header.textContent = '已打开';
+      container.appendChild(header);
+    }
 
-    const windowSpan = document.createElement('span');
-    windowSpan.className = 'result-window';
-    windowSpan.textContent = `窗口${tab.windowIndex}`;
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'result-copy-btn';
-    copyBtn.title = '复制链接';
-    copyBtn.dataset.index = index;
-    copyBtn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
-        <path d="M3 11V3a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-      </svg>
-    `;
-
-    item.appendChild(faviconImg);
-    item.appendChild(resultInfo);
-    item.appendChild(domainSpan);
-    item.appendChild(windowSpan);
-    item.appendChild(copyBtn);
-
-    copyBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      copyTabUrl(index);
+    filteredTabs.forEach((tab, index) => {
+      const globalIndex = index;
+      const item = createTabResultItem(tab, globalIndex, query);
+      container.appendChild(item);
     });
-    item.addEventListener('click', (e) => switchToTab(index, e.altKey));
-    item.addEventListener('mouseenter', () => {
-      selectedIndex = index;
-      updateSelection();
-    });
+  }
 
-    container.appendChild(item);
-  });
+  if (hasQuery && historyItems.length > 0) {
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.textContent = '历史记录';
+    container.appendChild(header);
+
+    historyItems.forEach((histItem, index) => {
+      const globalIndex = filteredTabs.length + index;
+      const item = createHistoryResultItem(histItem, globalIndex, query);
+      container.appendChild(item);
+    });
+  }
 
   scrollToSelected();
 }
 
+function createTabResultItem(tab, globalIndex, query) {
+  const item = document.createElement('div');
+  item.className = `result-item ${globalIndex === selectedIndex ? 'selected' : ''}`;
+  item.dataset.index = globalIndex;
+
+  const faviconImg = document.createElement('img');
+  faviconImg.className = 'result-favicon';
+  faviconImg.src = tab.favIconUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Crect fill="%23555" width="16" height="16" rx="2"/%3E%3C/svg%3E';
+  faviconImg.alt = '';
+
+  const resultInfo = document.createElement('div');
+  resultInfo.className = 'result-info';
+
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'result-title';
+  if (query) {
+    titleDiv.innerHTML = highlightMatch(tab.title, query);
+  } else {
+    titleDiv.textContent = tab.title;
+  }
+
+  const urlDiv = document.createElement('div');
+  urlDiv.className = 'result-url';
+  if (query) {
+    urlDiv.innerHTML = highlightMatch(truncateUrl(tab.url), query);
+  } else {
+    urlDiv.textContent = truncateUrl(tab.url);
+  }
+
+  resultInfo.appendChild(titleDiv);
+  resultInfo.appendChild(urlDiv);
+
+  const domainSpan = document.createElement('span');
+  domainSpan.className = 'result-domain';
+  domainSpan.textContent = tab.domain;
+
+  const windowSpan = document.createElement('span');
+  windowSpan.className = 'result-window';
+  windowSpan.textContent = `窗口${tab.windowIndex}`;
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'result-copy-btn';
+  copyBtn.title = '复制链接';
+  copyBtn.dataset.index = globalIndex;
+  copyBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+      <path d="M3 11V3a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+    </svg>
+  `;
+
+  item.appendChild(faviconImg);
+  item.appendChild(resultInfo);
+  item.appendChild(domainSpan);
+  item.appendChild(windowSpan);
+  item.appendChild(copyBtn);
+
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    copyTabUrl(globalIndex);
+  });
+  item.addEventListener('click', (e) => switchToTab(globalIndex, e.altKey));
+  item.addEventListener('mouseenter', () => {
+    selectedIndex = globalIndex;
+    updateSelection();
+  });
+
+  return item;
+}
+
+function createHistoryResultItem(histItem, globalIndex, query) {
+  const item = document.createElement('div');
+  item.className = `result-item result-item-history ${globalIndex === selectedIndex ? 'selected' : ''}`;
+  item.dataset.index = globalIndex;
+
+  const faviconImg = document.createElement('img');
+  faviconImg.className = 'result-favicon';
+  faviconImg.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(histItem.domain)}&sz=32`;
+  faviconImg.alt = '';
+  faviconImg.onerror = function() {
+    this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3E%3Crect fill="%23555" width="16" height="16" rx="2"/%3E%3C/svg%3E';
+  };
+
+  const resultInfo = document.createElement('div');
+  resultInfo.className = 'result-info';
+
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'result-title';
+  if (query) {
+    titleDiv.innerHTML = highlightMatch(histItem.title, query);
+  } else {
+    titleDiv.textContent = histItem.title;
+  }
+
+  const urlDiv = document.createElement('div');
+  urlDiv.className = 'result-url';
+  if (query) {
+    urlDiv.innerHTML = highlightMatch(truncateUrl(histItem.url), query);
+  } else {
+    urlDiv.textContent = truncateUrl(histItem.url);
+  }
+
+  resultInfo.appendChild(titleDiv);
+  resultInfo.appendChild(urlDiv);
+
+  const domainSpan = document.createElement('span');
+  domainSpan.className = 'result-domain';
+  domainSpan.textContent = histItem.domain;
+
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'result-history-time';
+  timeSpan.textContent = formatRelativeTime(histItem.lastVisitTime);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'result-copy-btn';
+  copyBtn.title = '复制链接';
+  copyBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+      <path d="M3 11V3a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+    </svg>
+  `;
+
+  item.appendChild(faviconImg);
+  item.appendChild(resultInfo);
+  item.appendChild(domainSpan);
+  item.appendChild(timeSpan);
+  item.appendChild(copyBtn);
+
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    copyUrl(histItem.url);
+  });
+  item.addEventListener('click', (e) => openHistoryItem(histItem, e.altKey));
+  item.addEventListener('mouseenter', () => {
+    selectedIndex = globalIndex;
+    updateSelection();
+  });
+
+  return item;
+}
+
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return '';
+  const now = Date.now();
+  const diff = now - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}天前`;
+  if (hours > 0) return `${hours}小时前`;
+  if (minutes > 0) return `${minutes}分钟前`;
+  return '刚刚';
+}
+
 function handleKeyDown(e) {
+  const totalItems = getTotalItemCount();
+
   if (e.key === 'Escape') {
     e.preventDefault();
     closeSearchTab();
@@ -206,7 +422,7 @@ function handleKeyDown(e) {
 
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    if (selectedIndex < filteredTabs.length - 1) {
+    if (selectedIndex < totalItems - 1) {
       selectedIndex++;
       updateSelection();
     }
@@ -224,16 +440,30 @@ function handleKeyDown(e) {
 
   if (e.key === 'Enter') {
     e.preventDefault();
-    if (filteredTabs.length > 0) {
-      switchToTab(selectedIndex, e.altKey);
+    if (totalItems > 0) {
+      const itemInfo = getItemByGlobalIndex(selectedIndex);
+      if (itemInfo) {
+        if (itemInfo.type === 'tab') {
+          switchToTab(selectedIndex, e.altKey);
+        } else {
+          openHistoryItem(itemInfo.data, e.altKey);
+        }
+      }
     }
     return;
   }
 
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
     e.preventDefault();
-    if (filteredTabs.length > 0) {
-      copyTabUrl(selectedIndex);
+    if (totalItems > 0) {
+      const itemInfo = getItemByGlobalIndex(selectedIndex);
+      if (itemInfo) {
+        if (itemInfo.type === 'tab') {
+          copyTabUrl(selectedIndex);
+        } else {
+          copyUrl(itemInfo.data.url);
+        }
+      }
     }
     return;
   }
@@ -249,7 +479,8 @@ function handleKeyDown(e) {
 function updateSelection() {
   const items = document.querySelectorAll('.result-item');
   items.forEach((item, index) => {
-    item.classList.toggle('selected', index === selectedIndex);
+    const globalIndex = parseInt(item.dataset.index, 10);
+    item.classList.toggle('selected', globalIndex === selectedIndex);
   });
   scrollToSelected();
 }
@@ -271,9 +502,18 @@ async function switchToTab(index, forceSwitch = false) {
       await chrome.windows.update(tab.windowId, { focused: true });
       closeSearchTab();
     } else {
-      const targetTab = await chrome.tabs.get(tab.id);
+      let targetTab;
+      try {
+        targetTab = await chrome.tabs.get(tab.id);
+      } catch (e) {
+        console.warn('目标标签页已不存在:', tab.url);
+        await chrome.tabs.create({ url: tab.url, windowId: searchWindowId, active: true });
+        closeSearchTab();
+        return;
+      }
+
       const isInGroup = typeof targetTab.groupId === 'number' && targetTab.groupId !== -1;
-      const isPinned = targetTab.pinned;
+      const isPinned = !!targetTab.pinned;
 
       if (isInGroup || isPinned) {
         await chrome.tabs.create({ url: tab.url, windowId: searchWindowId, active: true });
@@ -305,16 +545,42 @@ async function switchToTab(index, forceSwitch = false) {
   }
 }
 
+async function openHistoryItem(histItem, forceSwitch = false) {
+  try {
+    const allCurrentTabs = await chrome.tabs.query({ windowId: searchWindowId });
+    const existingTab = allCurrentTabs.find(t => t.url === histItem.url && t.id !== searchTabId);
+
+    if (existingTab) {
+      await chrome.tabs.update(existingTab.id, { active: true });
+      closeSearchTab();
+    } else {
+      await chrome.tabs.create({ url: histItem.url, windowId: searchWindowId, active: true });
+      closeSearchTab();
+    }
+  } catch (e) {
+    console.error('打开历史记录页面失败:', e);
+    try {
+      await chrome.tabs.create({ url: histItem.url });
+      closeSearchTab();
+    } catch (e2) {
+      console.error('降级打开也失败:', e2);
+    }
+  }
+}
+
 async function copyTabUrl(index) {
   const tab = filteredTabs[index];
   if (!tab) return;
+  await copyUrl(tab.url);
+}
 
+async function copyUrl(url) {
   try {
-    await navigator.clipboard.writeText(tab.url);
+    await navigator.clipboard.writeText(url);
     showToast('已复制链接');
   } catch (e) {
     const textarea = document.createElement('textarea');
-    textarea.value = tab.url;
+    textarea.value = url;
     textarea.style.position = 'fixed';
     textarea.style.opacity = '0';
     document.body.appendChild(textarea);
