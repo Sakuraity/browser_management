@@ -1,3 +1,36 @@
+function normalizeUrl(url) {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    let normalized = `${parsed.protocol}//${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}${parsed.pathname}`;
+    if (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
+    }
+    if (parsed.search) {
+      const params = new URLSearchParams(parsed.search);
+      const sortedKeys = Array.from(params.keys()).sort();
+      const sortedParams = sortedKeys.map(key => {
+        const values = params.getAll(key).sort();
+        return values.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`).join('&');
+      }).join('&');
+      if (sortedParams) {
+        normalized += `?${sortedParams}`;
+      }
+    }
+    return normalized;
+  } catch (e) {
+    return url;
+  }
+}
+
+function shouldSkipUrl(url) {
+  if (!url) return true;
+  if (url.startsWith('chrome://')) return true;
+  if (url.startsWith('chrome-extension://')) return true;
+  if (url === 'about:blank') return true;
+  return false;
+}
+
 let allWindows = [];
 let searchQuery = '';
 let popupWindowId = null;
@@ -44,8 +77,9 @@ function renderTabs() {
 
   allWindows.forEach(window => {
     window.tabs.forEach(tab => {
-      if (tab.url && !tab.url.startsWith('chrome://')) {
-        urlCount.set(tab.url, (urlCount.get(tab.url) || 0) + 1);
+      if (!shouldSkipUrl(tab.url)) {
+        const normalizedUrl = normalizeUrl(tab.url);
+        urlCount.set(normalizedUrl, (urlCount.get(normalizedUrl) || 0) + 1);
       }
       totalTabs++;
     });
@@ -55,7 +89,7 @@ function renderTabs() {
   document.getElementById('tabCount').textContent = `${totalTabs} 个标签页`;
 
   let duplicateCount = 0;
-  urlCount.forEach((count, url) => {
+  urlCount.forEach((count) => {
     if (count > 1) {
       duplicateCount += count - 1;
     }
@@ -109,7 +143,8 @@ function renderTabs() {
       domainGroup.appendChild(domainName);
 
       tabsByDomain[domain].forEach(tab => {
-        const tabItem = createTabItem(tab, urlCount.get(tab.url) > 1);
+        const isDuplicate = !shouldSkipUrl(tab.url) && (urlCount.get(normalizeUrl(tab.url)) || 0) > 1;
+        const tabItem = createTabItem(tab, isDuplicate);
         domainGroup.appendChild(tabItem);
       });
 
@@ -125,7 +160,7 @@ function groupTabsByDomain(tabs) {
 
   tabs.forEach(tab => {
     let domain = '其他';
-    if (tab.url && !tab.url.startsWith('chrome://')) {
+    if (!shouldSkipUrl(tab.url)) {
       try {
         const url = new URL(tab.url);
         domain = url.hostname;

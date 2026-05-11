@@ -1,3 +1,36 @@
+function normalizeUrl(url) {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    let normalized = `${parsed.protocol}//${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}${parsed.pathname}`;
+    if (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
+    }
+    if (parsed.search) {
+      const params = new URLSearchParams(parsed.search);
+      const sortedKeys = Array.from(params.keys()).sort();
+      const sortedParams = sortedKeys.map(key => {
+        const values = params.getAll(key).sort();
+        return values.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`).join('&');
+      }).join('&');
+      if (sortedParams) {
+        normalized += `?${sortedParams}`;
+      }
+    }
+    return normalized;
+  } catch (e) {
+    return url;
+  }
+}
+
+function shouldSkipUrl(url) {
+  if (!url) return true;
+  if (url.startsWith('chrome://')) return true;
+  if (url.startsWith('chrome-extension://')) return true;
+  if (url === 'about:blank') return true;
+  return false;
+}
+
 let allTabs = [];
 let filteredTabs = [];
 let historyItems = [];
@@ -50,9 +83,7 @@ async function loadTabs() {
 
   windows.forEach((win, winIndex) => {
     win.tabs.forEach(tab => {
-      if (!tab.url) return;
-      if (tab.url.startsWith('chrome://')) return;
-      if (tab.url.startsWith('chrome-extension://')) return;
+      if (shouldSkipUrl(tab.url)) return;
       if (tab.id === searchTabId) return;
 
       let domain = '';
@@ -152,11 +183,11 @@ async function searchHistory() {
       maxResults: 200
     });
 
-    const openTabUrls = new Set(filteredTabs.map(t => t.url));
+    const openTabUrls = new Set(filteredTabs.map(t => normalizeUrl(t.url)));
 
     historyItems = results
-      .filter(item => item.url && !item.url.startsWith('chrome://') && !item.url.startsWith('chrome-extension://'))
-      .filter(item => !openTabUrls.has(item.url))
+      .filter(item => item.url && !shouldSkipUrl(item.url))
+      .filter(item => !openTabUrls.has(normalizeUrl(item.url)))
       .filter(item => {
         const searchText = `${item.title || ''} ${item.url}`.toLowerCase();
         return terms.every(term => searchText.includes(term));

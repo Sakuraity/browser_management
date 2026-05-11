@@ -1,3 +1,36 @@
+function normalizeUrl(url) {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    let normalized = `${parsed.protocol}//${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}${parsed.pathname}`;
+    if (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
+    }
+    if (parsed.search) {
+      const params = new URLSearchParams(parsed.search);
+      const sortedKeys = Array.from(params.keys()).sort();
+      const sortedParams = sortedKeys.map(key => {
+        const values = params.getAll(key).sort();
+        return values.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`).join('&');
+      }).join('&');
+      if (sortedParams) {
+        normalized += `?${sortedParams}`;
+      }
+    }
+    return normalized;
+  } catch (e) {
+    return url;
+  }
+}
+
+function shouldSkipUrl(url) {
+  if (!url) return true;
+  if (url.startsWith('chrome://')) return true;
+  if (url.startsWith('chrome-extension://')) return true;
+  if (url === 'about:blank') return true;
+  return false;
+}
+
 let allWindows = [];
 let searchQuery = '';
 let currentLayout = 'grid';
@@ -196,8 +229,9 @@ function updateStats() {
   allWindows.forEach(w => {
     w.tabs.forEach(t => {
       totalTabs++;
-      if (t.url && !t.url.startsWith('chrome://')) {
-        urlCountMap.set(t.url, (urlCountMap.get(t.url) || 0) + 1);
+      if (!shouldSkipUrl(t.url)) {
+        const normalizedUrl = normalizeUrl(t.url);
+        urlCountMap.set(normalizedUrl, (urlCountMap.get(normalizedUrl) || 0) + 1);
       }
     });
   });
@@ -436,8 +470,8 @@ function filterTabs(tabs) {
 }
 
 function checkIsDuplicate(tab) {
-  if (!tab.url || tab.url.startsWith('chrome://')) return false;
-  return (urlCountMap.get(tab.url) || 0) > 1;
+  if (shouldSkipUrl(tab.url)) return false;
+  return (urlCountMap.get(normalizeUrl(tab.url)) || 0) > 1;
 }
 
 async function switchToTab(tabId, windowId) {
@@ -492,11 +526,12 @@ async function closeDuplicateTabs() {
 
     allWindows.forEach(w => {
       w.tabs.forEach(t => {
-        if (!t.url || t.url.startsWith('chrome://')) return;
-        if (urlMap.has(t.url)) {
+        if (shouldSkipUrl(t.url)) return;
+        const normalizedUrl = normalizeUrl(t.url);
+        if (urlMap.has(normalizedUrl)) {
           toClose.push(t.id);
         } else {
-          urlMap.set(t.url, t.id);
+          urlMap.set(normalizedUrl, t.id);
         }
       });
     });

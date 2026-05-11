@@ -1,3 +1,36 @@
+function normalizeUrl(url) {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    let normalized = `${parsed.protocol}//${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}${parsed.pathname}`;
+    if (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
+    }
+    if (parsed.search) {
+      const params = new URLSearchParams(parsed.search);
+      const sortedKeys = Array.from(params.keys()).sort();
+      const sortedParams = sortedKeys.map(key => {
+        const values = params.getAll(key).sort();
+        return values.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`).join('&');
+      }).join('&');
+      if (sortedParams) {
+        normalized += `?${sortedParams}`;
+      }
+    }
+    return normalized;
+  } catch (e) {
+    return url;
+  }
+}
+
+function shouldSkipUrl(url) {
+  if (!url) return true;
+  if (url.startsWith('chrome://')) return true;
+  if (url.startsWith('chrome-extension://')) return true;
+  if (url === 'about:blank') return true;
+  return false;
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log('浏览器多页面管理工具已安装');
   initializeFreqPages();
@@ -60,7 +93,7 @@ chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
 });
 
 async function checkDuplicateTabs(newTab) {
-  if (!newTab.url || newTab.url.startsWith('chrome://') || newTab.url.startsWith('chrome-extension://')) {
+  if (shouldSkipUrl(newTab.url)) {
     return;
   }
 
@@ -69,9 +102,10 @@ async function checkDuplicateTabs(newTab) {
     return;
   }
 
+  const normalizedNewUrl = normalizeUrl(newTab.url);
   const allTabs = await chrome.tabs.query({});
   const duplicates = allTabs.filter(tab =>
-    tab.id !== newTab.id && tab.url === newTab.url
+    tab.id !== newTab.id && !shouldSkipUrl(tab.url) && normalizeUrl(tab.url) === normalizedNewUrl
   );
 
   if (duplicates.length > 0) {
@@ -182,12 +216,13 @@ async function closeDuplicateTabs() {
   const tabsToClose = [];
 
   for (const tab of allTabs) {
-    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) continue;
+    if (shouldSkipUrl(tab.url)) continue;
 
-    if (urlMap.has(tab.url)) {
+    const normalizedUrl = normalizeUrl(tab.url);
+    if (urlMap.has(normalizedUrl)) {
       tabsToClose.push(tab.id);
     } else {
-      urlMap.set(tab.url, true);
+      urlMap.set(normalizedUrl, true);
     }
   }
 
@@ -206,7 +241,7 @@ async function initializeFreqPages() {
 }
 
 async function recordFreqPage(tab) {
-  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url === 'about:blank') {
+  if (shouldSkipUrl(tab.url)) {
     return;
   }
 
@@ -250,7 +285,7 @@ async function recordFreqPage(tab) {
 }
 
 async function updateFreqPageInfo(tab) {
-  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) return;
+  if (shouldSkipUrl(tab.url)) return;
 
   const result = await chrome.storage.local.get('freqPagesData');
   const data = result.freqPagesData || [];
